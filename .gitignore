@@ -1,0 +1,6 @@
+.discord-mcp/
+.potassium-mcp/
+.claude/
+node_modules/
+*.jsonl
+*.log
