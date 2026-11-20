@@ -40,14 +40,16 @@ Theme.font = {
 Theme.dim = {
 	corner       = 12,
 	cornerSmall  = 8,
-	windowWidth  = 540,
-	windowHeight = 440,
-	titleBar     = 42,
-	footer       = 26,
-	tabWidth     = 120,
+	windowWidth  = 560,
+	windowHeight = 420,
+	sidebarWidth = 44,
+	headerHeight = 36,
+	iconSize     = 20,
+	iconBtnSize  = 32,
 	control      = 34,
 	sectionGap   = 10,
 	controlGap   = 4,
+	cardGap      = 10,
 }
 
 Theme.Changed = Signal.new()
@@ -1185,6 +1187,178 @@ function Section:Destroy()
 	self._frame:Destroy()
 end
 
+
+--================================================================--
+-- CARD
+--================================================================--
+
+local Card = {}
+Card.__index = Card
+
+function Card.new(config, parent)
+	local self = setmetatable({}, Card)
+	local colors = Theme.colors
+
+	local frame = Instance.new("Frame")
+	frame.Name = "Card_" .. (config.name or "")
+	frame.BackgroundColor3 = colors.surface
+	frame.BorderSizePixel = 0
+	frame.AutomaticSize = Enum.AutomaticSize.Y
+	frame.Size = config.size or UDim2.new(1, 0, 0, 0)
+	frame.Parent = parent
+	corner(frame, Theme.dim.cornerSmall)
+	stroke(frame, colors.border, 1, 0.6)
+	self._frame = frame
+
+	list(frame, nil, 0)
+	pad(frame, 10, 12, 12, 12)
+
+	if config.name then
+		local header = Instance.new("TextLabel")
+		header.Name = "Header"
+		header.BackgroundTransparency = 1
+		header.TextColor3 = colors.textSub
+		header.FontFace = Theme.font.medium
+		header.TextSize = Theme.font.body
+		header.Text = config.name
+		header.TextXAlignment = Enum.TextXAlignment.Left
+		header.Size = UDim2.new(1, 0, 0, 20)
+		header.LayoutOrder = -1
+		header.Parent = frame
+		self._header = header
+	end
+
+	local content = Instance.new("Frame")
+	content.Name = "Content"
+	content.BackgroundTransparency = 1
+	content.AutomaticSize = Enum.AutomaticSize.Y
+	content.Size = UDim2.new(1, 0, 0, 0)
+	content.LayoutOrder = 0
+	content.Parent = frame
+	list(content, nil, 6)
+	self._content = content
+
+	return self
+end
+
+function Card:GetContent() return self._content end
+function Card:GetFrame() return self._frame end
+
+function Card:AddInfoRow(config)
+	return InfoRow.new(config, self._content)
+end
+
+function Card:Destroy()
+	self._frame:Destroy()
+end
+
+--================================================================--
+-- INFO ROW
+--================================================================--
+
+local InfoRow = {}
+InfoRow.__index = InfoRow
+
+function InfoRow.new(config, parent)
+	local self = setmetatable({}, InfoRow)
+	local colors = Theme.colors
+
+	local row = Instance.new("Frame")
+	row.Name = "InfoRow"
+	row.BackgroundTransparency = 1
+	row.BorderSizePixel = 0
+	row.Size = UDim2.new(1, 0, 0, 20)
+	row.Parent = parent
+	self._frame = row
+
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.TextColor3 = colors.textSub
+	label.FontFace = Theme.font.regular
+	label.TextSize = Theme.font.small
+	label.Text = config.label or ""
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.Size = UDim2.new(0.5, 0, 1, 0)
+	label.Parent = row
+	self._label = label
+
+	local value = Instance.new("TextLabel")
+	value.BackgroundTransparency = 1
+	value.TextColor3 = colors.text
+	value.FontFace = Theme.font.medium
+	value.TextSize = Theme.font.small
+	value.Text = config.value or ""
+	value.TextXAlignment = Enum.TextXAlignment.Right
+	value.Size = UDim2.new(0.5, 0, 1, 0)
+	value.Position = UDim2.new(0.5, 0, 0, 0)
+	value.Parent = row
+	self._value = value
+
+	return self
+end
+
+function InfoRow:SetValue(v) self._value.Text = tostring(v) end
+function InfoRow:SetLabel(l) self._label.Text = l end
+function InfoRow:GetFrame() return self._frame end
+function InfoRow:Destroy() self._frame:Destroy() end
+
+--================================================================--
+-- ICONS
+--================================================================--
+
+local IconBuilders = {}
+
+function IconBuilders.grid(parent, size, color)
+	local container = Instance.new("Frame")
+	container.Name = "GridIcon"
+	container.BackgroundTransparency = 1
+	container.BorderSizePixel = 0
+	container.Size = UDim2.fromOffset(size, size)
+	container.AnchorPoint = Vector2.new(0.5, 0.5)
+	container.Position = UDim2.fromScale(0.5, 0.5)
+	container.Parent = parent
+
+	local d = math.floor(size * 0.38)
+	local gap = size - d * 2
+	for r = 0, 1 do
+		for c = 0, 1 do
+			local dot = Instance.new("Frame")
+			dot.BackgroundColor3 = color
+			dot.BorderSizePixel = 0
+			dot.Size = UDim2.fromOffset(d, d)
+			dot.Position = UDim2.fromOffset(c * (d + gap), r * (d + gap))
+			dot.Parent = container
+			corner(dot, math.max(1, math.floor(d * 0.25)))
+		end
+	end
+	return container
+end
+
+function IconBuilders.list(parent, size, color)
+	local container = Instance.new("Frame")
+	container.Name = "ListIcon"
+	container.BackgroundTransparency = 1
+	container.BorderSizePixel = 0
+	container.Size = UDim2.fromOffset(size, size)
+	container.AnchorPoint = Vector2.new(0.5, 0.5)
+	container.Position = UDim2.fromScale(0.5, 0.5)
+	container.Parent = parent
+
+	local h = math.max(2, math.floor(size * 0.14))
+	local gap = math.floor((size - h * 3) / 4)
+	local widths = { size, math.floor(size * 0.7), math.floor(size * 0.85) }
+	for i = 1, 3 do
+		local bar = Instance.new("Frame")
+		bar.BackgroundColor3 = color
+		bar.BorderSizePixel = 0
+		bar.Size = UDim2.fromOffset(widths[i], h)
+		bar.Position = UDim2.fromOffset(0, gap * i + h * (i - 1))
+		bar.Parent = container
+		corner(bar, 1)
+	end
+	return container
+end
+
 --================================================================--
 -- TAB
 --================================================================--
@@ -1192,33 +1366,31 @@ end
 local Tab = {}
 Tab.__index = Tab
 
-function Tab.new(name, sidebar, container)
+function Tab.new(config, sidebar, contentArea)
+	if type(config) == "string" then config = { name = config } end
 	local self = setmetatable({}, Tab)
 	local trove = Trove.new()
 	self._trove = trove
 	self._sections = {}
-	self._name = name
+	self._name = config.name or "Tab"
 	self._active = false
+	self._scrollCreated = false
 
 	local colors = Theme.colors
+	local dim = Theme.dim
 
 	self.OnClick = trove:Construct(Signal)
 
 	local btn = Instance.new("TextButton")
-	btn.Name = name
-	btn.Text = name
-	btn.TextColor3 = colors.textSub
-	btn.FontFace = Theme.font.medium
-	btn.TextSize = Theme.font.body
-	btn.TextXAlignment = Enum.TextXAlignment.Left
-	btn.BackgroundTransparency = 1
-	btn.BackgroundColor3 = colors.surface
-	btn.BorderSizePixel = 0
+	btn.Name = config.name or "Tab"
+	btn.Text = ""
 	btn.AutoButtonColor = false
-	btn.Size = UDim2.new(1, 0, 0, 32)
+	btn.BackgroundColor3 = colors.accent
+	btn.BackgroundTransparency = 1
+	btn.BorderSizePixel = 0
+	btn.Size = UDim2.fromOffset(dim.iconBtnSize, dim.iconBtnSize)
 	btn.Parent = sidebar
-	corner(btn, 6)
-	pad(btn, 0, 10, 0, 22)
+	corner(btn, dim.cornerSmall)
 	self._btn = btn
 
 	local indicator = Instance.new("Frame")
@@ -1226,27 +1398,25 @@ function Tab.new(name, sidebar, container)
 	indicator.BackgroundColor3 = colors.accent
 	indicator.BorderSizePixel = 0
 	indicator.Size = UDim2.new(0, 3, 0.6, 0)
-	indicator.Position = UDim2.new(0, 4, 0.2, 0)
+	indicator.Position = UDim2.new(0, -math.floor((dim.sidebarWidth - dim.iconBtnSize) / 2), 0.2, 0)
 	indicator.Visible = false
 	indicator.Parent = btn
 	corner(indicator, 2)
 	self._indicator = indicator
 
-	local page = Instance.new("ScrollingFrame")
-	page.Name = name
+	local iconBuilder = IconBuilders[config.icon or "grid"]
+	if iconBuilder then
+		self._iconContainer = iconBuilder(btn, dim.iconSize, colors.textSub)
+	end
+
+	local page = Instance.new("Frame")
+	page.Name = config.name or "Page"
 	page.BackgroundTransparency = 1
 	page.BorderSizePixel = 0
 	page.Size = UDim2.fromScale(1, 1)
-	page.ScrollBarThickness = 3
-	page.ScrollBarImageColor3 = colors.border
-	page.CanvasSize = UDim2.new(0, 0, 0, 0)
-	page.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	page.Visible = false
-	page.Parent = container
+	page.Parent = contentArea
 	self._page = page
-
-	list(page, nil, Theme.dim.sectionGap)
-	pad(page, 8, 10, 10, 10)
 
 	trove:Connect(btn.MouseButton1Click, function()
 		self.OnClick:Fire()
@@ -1254,8 +1424,7 @@ function Tab.new(name, sidebar, container)
 
 	trove:Connect(btn.MouseEnter, function()
 		if not self._active then
-			tween(btn, { BackgroundTransparency = 0.85 })
-			btn.BackgroundColor3 = colors.hover
+			tween(btn, { BackgroundTransparency = 0.88 })
 		end
 	end)
 	trove:Connect(btn.MouseLeave, function()
@@ -1265,35 +1434,68 @@ function Tab.new(name, sidebar, container)
 	end)
 
 	trove:Connect(Theme.Changed, function(key)
-		if key == "accent" and self._active then
+		if key == "accent" then
 			indicator.BackgroundColor3 = colors.accent
-			btn.TextColor3 = colors.accent
+			if self._active then self:_setIconColor(colors.accent) end
 		end
 	end)
 
 	return self
 end
 
+function Tab:_setIconColor(color)
+	local container = self._iconContainer
+	if not container then return end
+	if container:IsA("Frame") then
+		for _, child in container:GetChildren() do
+			if child:IsA("Frame") then child.BackgroundColor3 = color end
+		end
+	elseif container:IsA("TextLabel") then
+		container.TextColor3 = color
+	end
+end
+
+function Tab:_ensureScroll()
+	if self._scrollCreated then return self._scroll end
+	local scroll = Instance.new("ScrollingFrame")
+	scroll.Name = "Scroll"
+	scroll.BackgroundTransparency = 1
+	scroll.BorderSizePixel = 0
+	scroll.Size = UDim2.fromScale(1, 1)
+	scroll.ScrollBarThickness = 3
+	scroll.ScrollBarImageColor3 = Theme.colors.border
+	scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	scroll.Parent = self._page
+	list(scroll, nil, Theme.dim.sectionGap)
+	pad(scroll, 8, 10, 10, 10)
+	self._scroll = scroll
+	self._scrollCreated = true
+	return scroll
+end
+
 function Tab:Select()
 	self._active = true
-	self._btn.BackgroundTransparency = 0.88
-	self._btn.BackgroundColor3 = Theme.colors.accent
-	self._btn.TextColor3 = Theme.colors.accent
+	self._btn.BackgroundTransparency = 0.85
 	self._indicator.Visible = true
 	self._page.Visible = true
+	self:_setIconColor(Theme.colors.accent)
 end
 
 function Tab:Deselect()
 	self._active = false
 	self._btn.BackgroundTransparency = 1
-	self._btn.BackgroundColor3 = Theme.colors.surface
-	self._btn.TextColor3 = Theme.colors.textSub
 	self._indicator.Visible = false
 	self._page.Visible = false
+	self:_setIconColor(Theme.colors.textSub)
 end
 
+function Tab:GetPage() return self._page end
+function Tab:GetName() return self._name end
+
 function Tab:AddSection(name)
-	local section = Section.new(name, self._page)
+	local scroll = self:_ensureScroll()
+	local section = Section.new(name, scroll)
 	table.insert(self._sections, section)
 	return section
 end
@@ -1310,7 +1512,7 @@ end
 local Window = {}
 Window.__index = Window
 
-local MIN_W, MIN_H = 440, 320
+local MIN_W, MIN_H = 440, 300
 local MAX_W, MAX_H = 900, 700
 
 function Window.new(config)
@@ -1341,7 +1543,6 @@ function Window.new(config)
 	trove:Add(gui)
 	self._gui = gui
 
-	-- Root wrapper
 	local root = Instance.new("Frame")
 	root.Name = "Root"
 	root.BackgroundTransparency = 1
@@ -1352,7 +1553,6 @@ function Window.new(config)
 	root.Parent = gui
 	self._root = root
 
-	-- Shadow
 	local shadow = Instance.new("Frame")
 	shadow.Name = "Shadow"
 	shadow.BackgroundColor3 = colors.shadow
@@ -1364,7 +1564,6 @@ function Window.new(config)
 	shadow.Parent = root
 	corner(shadow, dim.corner + 4)
 
-	-- Main
 	local main = Instance.new("Frame")
 	main.Name = "Main"
 	main.BackgroundColor3 = colors.bg
@@ -1376,38 +1575,81 @@ function Window.new(config)
 	corner(main)
 	stroke(main, colors.border, 1, 0.4)
 
-	-- Title bar
-	local titleBar = Instance.new("Frame")
-	titleBar.Name = "TitleBar"
-	titleBar.BackgroundColor3 = colors.surface
-	titleBar.BorderSizePixel = 0
-	titleBar.Size = UDim2.new(1, 0, 0, dim.titleBar)
-	titleBar.Parent = main
-	gradient(titleBar, 90)
+	local sidebar = Instance.new("Frame")
+	sidebar.Name = "Sidebar"
+	sidebar.BackgroundColor3 = colors.surface
+	sidebar.BorderSizePixel = 0
+	sidebar.Size = UDim2.new(0, dim.sidebarWidth, 1, 0)
+	sidebar.Parent = main
 
-	local titleText = Instance.new("TextLabel")
-	titleText.BackgroundTransparency = 1
-	titleText.TextColor3 = colors.text
-	titleText.FontFace = Theme.font.bold
-	titleText.TextSize = Theme.font.title
-	titleText.Text = config.title or "Zyx"
-	titleText.TextXAlignment = Enum.TextXAlignment.Left
-	titleText.Size = UDim2.new(1, -24, 1, 0)
-	titleText.Position = UDim2.fromOffset(14, 0)
-	titleText.Parent = titleBar
+	local sidebarLayout = Instance.new("UIListLayout")
+	sidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	sidebarLayout.FillDirection = Enum.FillDirection.Vertical
+	sidebarLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	sidebarLayout.Padding = UDim.new(0, 4)
+	sidebarLayout.Parent = sidebar
+	pad(sidebar, 12, 0, 12, 0)
+	self._sidebar = sidebar
 
-	local titleSep = Instance.new("Frame")
-	titleSep.BackgroundColor3 = colors.border
-	titleSep.BackgroundTransparency = 0.5
-	titleSep.BorderSizePixel = 0
-	titleSep.Size = UDim2.new(1, 0, 0, 1)
-	titleSep.Position = UDim2.new(0, 0, 1, -1)
-	titleSep.Parent = titleBar
+	local sidebarSep = Instance.new("Frame")
+	sidebarSep.BackgroundColor3 = colors.border
+	sidebarSep.BackgroundTransparency = 0.5
+	sidebarSep.BorderSizePixel = 0
+	sidebarSep.Size = UDim2.new(0, 1, 1, 0)
+	sidebarSep.Position = UDim2.fromOffset(dim.sidebarWidth, 0)
+	sidebarSep.Parent = main
 
-	-- Drag
+	local rightSide = Instance.new("Frame")
+	rightSide.Name = "RightSide"
+	rightSide.BackgroundTransparency = 1
+	rightSide.BorderSizePixel = 0
+	rightSide.Size = UDim2.new(1, -(dim.sidebarWidth + 1), 1, 0)
+	rightSide.Position = UDim2.fromOffset(dim.sidebarWidth + 1, 0)
+	rightSide.Parent = main
+
+	local header = Instance.new("Frame")
+	header.Name = "Header"
+	header.BackgroundTransparency = 1
+	header.BorderSizePixel = 0
+	header.Size = UDim2.new(1, 0, 0, dim.headerHeight)
+	header.Parent = rightSide
+
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.Name = "Title"
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.TextColor3 = colors.text
+	titleLabel.FontFace = Theme.font.bold
+	titleLabel.TextSize = 16
+	titleLabel.Text = ""
+	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+	titleLabel.Size = UDim2.new(1, -100, 1, 0)
+	titleLabel.Position = UDim2.fromOffset(14, 0)
+	titleLabel.Parent = header
+	self._titleLabel = titleLabel
+
+	local versionLabel = Instance.new("TextLabel")
+	versionLabel.Name = "Version"
+	versionLabel.BackgroundTransparency = 1
+	versionLabel.TextColor3 = colors.textMuted
+	versionLabel.FontFace = Theme.font.regular
+	versionLabel.TextSize = Theme.font.small
+	versionLabel.Text = config.version or "Zyx v1.0"
+	versionLabel.TextXAlignment = Enum.TextXAlignment.Right
+	versionLabel.Size = UDim2.new(0, 80, 1, 0)
+	versionLabel.Position = UDim2.new(1, -90, 0, 0)
+	versionLabel.Parent = header
+
+	local headerSep = Instance.new("Frame")
+	headerSep.BackgroundColor3 = colors.border
+	headerSep.BackgroundTransparency = 0.5
+	headerSep.BorderSizePixel = 0
+	headerSep.Size = UDim2.new(1, 0, 0, 1)
+	headerSep.Position = UDim2.new(0, 0, 1, -1)
+	headerSep.Parent = header
+
 	do
 		local dragging, dragStart, startPos
-		trove:Connect(titleBar.InputBegan, function(input)
+		trove:Connect(header.InputBegan, function(input)
 			if input.UserInputType == Enum.UserInputType.MouseButton1 then
 				dragging = true
 				dragStart = input.Position
@@ -1430,72 +1672,15 @@ function Window.new(config)
 		end)
 	end
 
-	-- Body
-	local body = Instance.new("Frame")
-	body.Name = "Body"
-	body.BackgroundTransparency = 1
-	body.BorderSizePixel = 0
-	body.Size = UDim2.new(1, 0, 1, -(dim.titleBar + dim.footer))
-	body.Position = UDim2.fromOffset(0, dim.titleBar)
-	body.Parent = main
-
-	-- Sidebar
-	local sidebar = Instance.new("Frame")
-	sidebar.Name = "Sidebar"
-	sidebar.BackgroundColor3 = colors.surface
-	sidebar.BorderSizePixel = 0
-	sidebar.Size = UDim2.new(0, dim.tabWidth, 1, 0)
-	sidebar.Parent = body
-	list(sidebar, nil, 2)
-	pad(sidebar, 8, 6, 8, 6)
-	self._sidebar = sidebar
-
-	local sidebarSep = Instance.new("Frame")
-	sidebarSep.BackgroundColor3 = colors.border
-	sidebarSep.BackgroundTransparency = 0.5
-	sidebarSep.BorderSizePixel = 0
-	sidebarSep.Size = UDim2.new(0, 1, 1, 0)
-	sidebarSep.Position = UDim2.fromOffset(dim.tabWidth, 0)
-	sidebarSep.Parent = body
-
-	-- Content
 	local content = Instance.new("Frame")
 	content.Name = "Content"
 	content.BackgroundTransparency = 1
 	content.BorderSizePixel = 0
-	content.Size = UDim2.new(1, -(dim.tabWidth + 1), 1, 0)
-	content.Position = UDim2.fromOffset(dim.tabWidth + 1, 0)
-	content.Parent = body
-	self._container = content
+	content.Size = UDim2.new(1, 0, 1, -dim.headerHeight)
+	content.Position = UDim2.fromOffset(0, dim.headerHeight)
+	content.Parent = rightSide
+	self._content = content
 
-	-- Footer
-	local footer = Instance.new("Frame")
-	footer.Name = "Footer"
-	footer.BackgroundColor3 = colors.surface
-	footer.BorderSizePixel = 0
-	footer.Size = UDim2.new(1, 0, 0, dim.footer)
-	footer.Position = UDim2.new(0, 0, 1, -dim.footer)
-	footer.Parent = main
-
-	local footerSep = Instance.new("Frame")
-	footerSep.BackgroundColor3 = colors.border
-	footerSep.BackgroundTransparency = 0.5
-	footerSep.BorderSizePixel = 0
-	footerSep.Size = UDim2.new(1, 0, 0, 1)
-	footerSep.Parent = footer
-
-	local footerText = Instance.new("TextLabel")
-	footerText.BackgroundTransparency = 1
-	footerText.TextColor3 = colors.textMuted
-	footerText.FontFace = Theme.font.regular
-	footerText.TextSize = Theme.font.small - 1
-	footerText.Text = "zyx v1.0"
-	footerText.TextXAlignment = Enum.TextXAlignment.Left
-	footerText.Size = UDim2.new(1, -16, 1, 0)
-	footerText.Position = UDim2.fromOffset(10, 0)
-	footerText.Parent = footer
-
-	-- Resize handle
 	local resizeHandle = Instance.new("TextButton")
 	resizeHandle.Text = ""
 	resizeHandle.BackgroundTransparency = 1
@@ -1544,7 +1729,6 @@ function Window.new(config)
 		end)
 	end
 
-	-- Keybind
 	if config.keybind then
 		trove:Connect(UIS.InputBegan, function(input, processed)
 			if processed then return end
@@ -1555,6 +1739,10 @@ function Window.new(config)
 	end
 
 	return self
+end
+
+function Window:SetTitle(title)
+	self._titleLabel.Text = title
 end
 
 function Window:Show()
@@ -1584,7 +1772,7 @@ end
 
 function Window:IsVisible() return self._visible end
 function Window:GetSidebar() return self._sidebar end
-function Window:GetContainer() return self._container end
+function Window:GetContent() return self._content end
 
 function Window:Destroy()
 	if self._cursorConn then self._cursorConn:Disconnect() end
@@ -1611,16 +1799,19 @@ function Hub.new(config)
 	self._window = Window.new({
 		title = config.title or "Zyx",
 		keybind = config.keybind,
+		version = config.version,
 	})
 
 	return self
 end
 
-function Hub:AddTab(name)
+function Hub:AddTab(config)
+	if type(config) == "string" then config = { name = config } end
+
 	local tab = Tab.new(
-		name,
+		config,
 		self._window:GetSidebar(),
-		self._window:GetContainer()
+		self._window:GetContent()
 	)
 
 	tab.OnClick:Connect(function()
@@ -1640,6 +1831,7 @@ function Hub:SelectTab(tab)
 	if self._activeTab then self._activeTab:Deselect() end
 	self._activeTab = tab
 	tab:Select()
+	self._window:SetTitle(tab:GetName())
 end
 
 function Hub:Show() self._window:Show() end
@@ -1653,4 +1845,15 @@ function Hub:Destroy()
 end
 
 Hub.Theme = Theme
+Hub.Card = Card
+Hub.InfoRow = InfoRow
+Hub.Helpers = {
+	tween = tween,
+	corner = corner,
+	stroke = stroke,
+	gradient = gradient,
+	list = list,
+	pad = pad,
+}
+
 return Hub
