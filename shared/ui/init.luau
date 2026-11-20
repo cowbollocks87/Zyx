@@ -38,8 +38,8 @@ Theme.font = {
 }
 
 Theme.dim = {
-	corner       = 12,
-	cornerSmall  = 8,
+	corner       = 6,
+	cornerSmall  = 4,
 	windowWidth  = 560,
 	windowHeight = 420,
 	sidebarWidth = 44,
@@ -1204,6 +1204,7 @@ function Card.new(config, parent)
 	local frame = Instance.new("Frame")
 	frame.Name = "Card_" .. (config.name or "")
 	frame.BackgroundColor3 = colors.surface
+	frame.BackgroundTransparency = 0.1
 	frame.BorderSizePixel = 0
 	frame.AutomaticSize = Enum.AutomaticSize.Y
 	frame.Size = config.size or UDim2.new(1, 0, 0, 0)
@@ -1555,24 +1556,13 @@ function Window.new(config)
 	root.Parent = gui
 	self._root = root
 
-	local shadow = Instance.new("Frame")
-	shadow.Name = "Shadow"
-	shadow.BackgroundColor3 = colors.shadow
-	shadow.BackgroundTransparency = 0.75
-	shadow.BorderSizePixel = 0
-	shadow.Size = UDim2.new(1, 14, 1, 14)
-	shadow.Position = UDim2.fromOffset(-5, 4)
-	shadow.ZIndex = 1
-	shadow.Parent = root
-	corner(shadow, dim.corner + 4)
-
 	local main = Instance.new("Frame")
 	main.Name = "Main"
 	main.BackgroundColor3 = colors.bg
+	main.BackgroundTransparency = 0.15
 	main.BorderSizePixel = 0
 	main.Size = UDim2.fromScale(1, 1)
 	main.ClipsDescendants = true
-	main.ZIndex = 2
 	main.Parent = root
 	corner(main)
 	stroke(main, colors.border, 1, 0.4)
@@ -1580,6 +1570,7 @@ function Window.new(config)
 	local sidebar = Instance.new("Frame")
 	sidebar.Name = "Sidebar"
 	sidebar.BackgroundColor3 = colors.surface
+	sidebar.BackgroundTransparency = 0.1
 	sidebar.BorderSizePixel = 0
 	sidebar.Size = UDim2.new(0, dim.sidebarWidth, 1, 0)
 	sidebar.Parent = main
