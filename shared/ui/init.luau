@@ -1188,11 +1188,13 @@ function Section:Destroy()
 end
 
 
+local Card, InfoRow
+
 --================================================================--
 -- CARD
 --================================================================--
 
-local Card = {}
+Card = {}
 Card.__index = Card
 
 function Card.new(config, parent)
@@ -1256,7 +1258,7 @@ end
 -- INFO ROW
 --================================================================--
 
-local InfoRow = {}
+InfoRow = {}
 InfoRow.__index = InfoRow
 
 function InfoRow.new(config, parent)
