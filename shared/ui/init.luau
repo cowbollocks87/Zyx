@@ -1362,6 +1362,62 @@ function IconBuilders.list(parent, size, color)
 	return container
 end
 
+function IconBuilders.gear(parent, size, color)
+	local container = Instance.new("Frame")
+	container.Name = "GearIcon"
+	container.BackgroundTransparency = 1
+	container.BorderSizePixel = 0
+	container.Size = UDim2.fromOffset(size, size)
+	container.AnchorPoint = Vector2.new(0.5, 0.5)
+	container.Position = UDim2.fromScale(0.5, 0.5)
+	container.Parent = parent
+
+	local center = math.floor(size / 2)
+	local innerR = math.floor(size * 0.22)
+	local outerR = math.floor(size * 0.42)
+	local toothW = math.max(2, math.floor(size * 0.18))
+	local toothH = math.max(2, math.floor(size * 0.14))
+
+	local ring = Instance.new("Frame")
+	ring.BackgroundColor3 = color
+	ring.BorderSizePixel = 0
+	ring.Size = UDim2.fromOffset(outerR * 2, outerR * 2)
+	ring.Position = UDim2.fromOffset(center - outerR, center - outerR)
+	ring.Parent = container
+	corner(ring, outerR)
+
+	local hole = Instance.new("Frame")
+	hole.BackgroundColor3 = Theme.colors.surface
+	hole.BorderSizePixel = 0
+	hole.Size = UDim2.fromOffset(innerR * 2, innerR * 2)
+	hole.Position = UDim2.fromOffset(center - innerR, center - innerR)
+	hole.ZIndex = 2
+	hole.Parent = container
+	corner(hole, innerR)
+
+	for i = 0, 3 do
+		local tooth = Instance.new("Frame")
+		tooth.BackgroundColor3 = color
+		tooth.BorderSizePixel = 0
+		if i < 2 then
+			tooth.Size = UDim2.fromOffset(toothW, size)
+			tooth.Position = UDim2.fromOffset(center - math.floor(toothW / 2), 0)
+			tooth.Rotation = i * 90
+		else
+			tooth.Size = UDim2.fromOffset(size, toothW)
+			tooth.Position = UDim2.fromOffset(0, center - math.floor(toothW / 2))
+			tooth.Rotation = (i - 2) * 90
+		end
+		tooth.AnchorPoint = Vector2.new(0.5, 0.5)
+		tooth.Position = UDim2.fromOffset(center, center)
+		tooth.Rotation = i * 45
+		tooth.Parent = container
+		corner(tooth, 1)
+	end
+
+	return container
+end
+
 --================================================================--
 -- TAB
 --================================================================--
@@ -1570,7 +1626,7 @@ function Window.new(config)
 	local sidebar = Instance.new("Frame")
 	sidebar.Name = "Sidebar"
 	sidebar.BackgroundColor3 = colors.surface
-	sidebar.BackgroundTransparency = 0.1
+	sidebar.BackgroundTransparency = 0.12
 	sidebar.BorderSizePixel = 0
 	sidebar.Size = UDim2.new(0, dim.sidebarWidth, 1, 0)
 	sidebar.Parent = main

@@ -45,6 +45,24 @@ local function loadThumb(img, userId)
 	end)
 end
 
+local TEAM_COLORS = {
+	Killer    = Color3.fromRGB(220, 50, 50),
+	Survivor  = Color3.fromRGB(60, 130, 220),
+	Spectator = Color3.fromRGB(180, 180, 190),
+}
+local TEAM_COLOR_DEFAULT = Color3.fromRGB(100, 100, 110)
+
+local function getTeamName(player)
+	if player.Team then return player.Team.Name end
+	local attr = player:GetAttribute("Team")
+	if attr then return tostring(attr) end
+	return "Unknown"
+end
+
+local function getTeamColor(teamName)
+	return TEAM_COLORS[teamName] or TEAM_COLOR_DEFAULT
+end
+
 --================================================================--
 -- DASHBOARD
 --================================================================--
@@ -111,10 +129,10 @@ envCard:AddInfoRow({ label = "Build Type", value = executorVersion and ("v" .. t
 envCard:AddInfoRow({ label = "HWID Status", value = hwid ~= "N/A" and "Locked" or "Unknown" })
 
 --================================================================--
--- SERVER
+-- SERVER STATUS
 --================================================================--
 
-local server = hub:AddTab({ name = "Server", icon = "list" })
+local server = hub:AddTab({ name = "Server Status", icon = "list" })
 local serverPage = server:GetPage()
 
 local DETAIL_WIDTH = 180
@@ -246,7 +264,7 @@ local function updateStats(player)
 	for _, key in ipairs(STAT_KEYS) do
 		local val
 		if key == "Team" then
-			val = player.Team and player.Team.Name or player:GetAttribute("Team")
+			val = getTeamName(player)
 		else
 			val = player:GetAttribute(key)
 		end
@@ -295,6 +313,16 @@ end
 closeBtn.MouseButton1Click:Connect(closeDetail)
 
 local playerEntries = {}
+local teamTagRefs = {}
+
+local function updateTeamTag(player)
+	local ref = teamTagRefs[player]
+	if not ref then return end
+	local teamName = getTeamName(player)
+	local teamColor = getTeamColor(teamName)
+	ref.label.Text = teamName
+	ref.frame.BackgroundColor3 = teamColor
+end
 
 local function createPlayerEntry(player)
 	local entry = Instance.new("TextButton")
@@ -324,9 +352,44 @@ local function createPlayerEntry(player)
 	lbl.Text = player.DisplayName .. " (@" .. player.Name .. ")"
 	lbl.TextXAlignment = Enum.TextXAlignment.Left
 	lbl.TextTruncate = Enum.TextTruncate.AtEnd
-	lbl.Size = UDim2.new(1, -48, 1, 0)
+	lbl.Size = UDim2.new(1, -130, 1, 0)
 	lbl.Position = UDim2.fromOffset(44, 0)
 	lbl.Parent = entry
+
+	-- Team tag
+	local teamName = getTeamName(player)
+	local teamColor = getTeamColor(teamName)
+
+	local tag = Instance.new("Frame")
+	tag.Name = "TeamTag"
+	tag.BackgroundColor3 = teamColor
+	tag.BackgroundTransparency = 0.7
+	tag.BorderSizePixel = 0
+	tag.AutomaticSize = Enum.AutomaticSize.X
+	tag.Size = UDim2.new(0, 0, 0, 20)
+	tag.AnchorPoint = Vector2.new(1, 0.5)
+	tag.Position = UDim2.new(1, -10, 0.5, 0)
+	tag.Parent = entry
+	H.corner(tag, 3)
+	H.pad(tag, 0, 6, 0, 6)
+
+	local tagLabel = Instance.new("TextLabel")
+	tagLabel.BackgroundTransparency = 1
+	tagLabel.TextColor3 = teamColor
+	tagLabel.FontFace = Theme.font.medium
+	tagLabel.TextSize = 10
+	tagLabel.Text = teamName
+	tagLabel.TextXAlignment = Enum.TextXAlignment.Center
+	tagLabel.AutomaticSize = Enum.AutomaticSize.X
+	tagLabel.Size = UDim2.new(0, 0, 1, 0)
+	tagLabel.Parent = tag
+
+	teamTagRefs[player] = { frame = tag, label = tagLabel }
+
+	-- Live team updates
+	local teamConn = player:GetPropertyChangedSignal("Team"):Connect(function()
+		updateTeamTag(player)
+	end)
 
 	entry.MouseEnter:Connect(function()
 		H.tween(entry, { BackgroundColor3 = Theme.colors.hover })
@@ -338,15 +401,17 @@ local function createPlayerEntry(player)
 		openDetail(player)
 	end)
 
-	playerEntries[player] = entry
+	playerEntries[player] = { entry = entry, teamConn = teamConn }
 end
 
 local function removePlayerEntry(player)
-	local entry = playerEntries[player]
-	if entry then
-		entry:Destroy()
+	local ref = playerEntries[player]
+	if ref then
+		ref.teamConn:Disconnect()
+		ref.entry:Destroy()
 		playerEntries[player] = nil
 	end
+	teamTagRefs[player] = nil
 	if selectedPlayer == player then
 		closeDetail()
 	end
@@ -358,6 +423,61 @@ end
 
 Players.PlayerAdded:Connect(createPlayerEntry)
 Players.PlayerRemoving:Connect(removePlayerEntry)
+
+--================================================================--
+-- UTILITY
+--================================================================--
+
+local utility = hub:AddTab({ name = "Utility", icon = "gear" })
+local utilPage = utility:GetPage()
+
+local utilContent = Instance.new("Frame")
+utilContent.BackgroundTransparency = 1
+utilContent.BorderSizePixel = 0
+utilContent.Size = UDim2.new(1, -20, 1, -20)
+utilContent.Position = UDim2.fromOffset(10, 10)
+utilContent.Parent = utilPage
+
+local utilLayout = Instance.new("UIListLayout")
+utilLayout.SortOrder = Enum.SortOrder.LayoutOrder
+utilLayout.Padding = UDim.new(0, 10)
+utilLayout.Parent = utilContent
+
+-- Keybind display
+local keybindCard = Card.new({ name = "Toggle Keybind" }, utilContent)
+keybindCard:AddInfoRow({ label = "Show/Hide UI", value = "RightControl" })
+
+-- Unload button
+local unloadCard = Card.new({ name = "Script Control" }, utilContent)
+local unloadContent = unloadCard:GetContent()
+
+local unloadBtn = Instance.new("TextButton")
+unloadBtn.Name = "Unload"
+unloadBtn.Text = "Unload Script"
+unloadBtn.AutoButtonColor = false
+unloadBtn.BackgroundColor3 = Color3.fromRGB(160, 40, 40)
+unloadBtn.BackgroundTransparency = 0.3
+unloadBtn.TextColor3 = Theme.colors.text
+unloadBtn.FontFace = Theme.font.medium
+unloadBtn.TextSize = Theme.font.body
+unloadBtn.BorderSizePixel = 0
+unloadBtn.Size = UDim2.new(1, 0, 0, 32)
+unloadBtn.Parent = unloadContent
+H.corner(unloadBtn, Theme.dim.cornerSmall)
+
+unloadBtn.MouseEnter:Connect(function()
+	H.tween(unloadBtn, { BackgroundTransparency = 0.15 })
+end)
+unloadBtn.MouseLeave:Connect(function()
+	H.tween(unloadBtn, { BackgroundTransparency = 0.3 })
+end)
+unloadBtn.MouseButton1Click:Connect(function()
+	for _, player in ipairs(Players:GetPlayers()) do
+		removePlayerEntry(player)
+	end
+	for _, conn in ipairs(attrConns) do conn:Disconnect() end
+	hub:Destroy()
+end)
 
 hub:Show()
 
