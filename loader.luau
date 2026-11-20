@@ -83,7 +83,7 @@ local loaded = {}
 local cache = {}
 
 local function fetch(path)
-	local url = REPO .. path
+	local url = REPO .. path .. "?t=" .. tostring(math.floor(tick()))
 	local ok, result = pcall(game.HttpGet, game, url)
 	if not ok then
 		error("[Zyx] Failed to fetch " .. path .. ": " .. tostring(result), 2)
